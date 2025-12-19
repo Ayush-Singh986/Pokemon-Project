@@ -16,47 +16,33 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                echo "Checking out code from GitHub"
-
-                git branch: 'main',
-                    url: env.GIT_REPO
-
-                sh '''
-                    echo "Commit ID: $(git rev-parse HEAD)"
-                    echo "Commit Message: $(git log -1 --pretty=%B)"
-                    echo "Author: $(git log -1 --pretty=%an)"
-                    echo "Date: $(git log -1 --pretty=%ad)"
-                '''
+                git branch: 'main', url: env.GIT_REPO
             }
         }
 
         stage('Verify Application Files') {
             steps {
-                echo "Verifying application files"
                 sh '''
                     ls -la
 
-                    if [ ! -f index.html ]; then
-                        echo "ERROR: index.html not found"
-                        exit 1
-                    fi
-
-                    if [ ! -f anime.html ]; then
-                        echo "ERROR: anime.html not found"
-                        exit 1
-                    fi
-
-                    du -h *.html
+                    test -f index.html || (echo "index.html missing" && exit 1)
+                    test -f anime.html || (echo "anime.html missing" && exit 1)
                 '''
             }
         }
 
         stage('Pre-deployment Health Check') {
             steps {
-                echo "Running pre-deployment health checks"
-                sshagent(credentials: ['ec2-ssh']) {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
+                        $SSH_USER@${EC2_HOST} "
                             systemctl is-active nginx
                             ls -la ${DEPLOY_PATH}
                         "
@@ -67,16 +53,23 @@ pipeline {
 
         stage('Deploy to AWS EC2') {
             steps {
-                echo "Deploying application to EC2"
-                sshagent(credentials: ['ec2-ssh']) {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
                     sh '''
                         rsync -avz --delete \
                           --exclude Jenkinsfile \
                           --exclude .git \
                           --exclude README.md \
-                          ./ ${EC2_USER}@${EC2_HOST}:${DEPLOY_PATH}/
+                          -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
+                          ./ $SSH_USER@${EC2_HOST}:${DEPLOY_PATH}/
 
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
+                        $SSH_USER@${EC2_HOST} "
                             sudo chown -R ubuntu:ubuntu ${DEPLOY_PATH}
                             sudo chmod -R 755 ${DEPLOY_PATH}
                             sudo systemctl reload nginx
@@ -88,13 +81,19 @@ pipeline {
 
         stage('Post-deployment Verification') {
             steps {
-                echo "Verifying deployment"
-                sshagent(credentials: ['ec2-ssh']) {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
+                        $SSH_USER@${EC2_HOST} "
                             test -f ${DEPLOY_PATH}/index.html
                             test -f ${DEPLOY_PATH}/anime.html
-                            curl -s -o /dev/null -w 'HTTP Status: %{http_code}\n' http://localhost
+                            curl -s -o /dev/null -w 'HTTP %{http_code}\n' http://localhost
                         "
                     '''
                 }
@@ -104,31 +103,15 @@ pipeline {
 
     post {
         always {
-            echo "Cleaning workspace"
             cleanWs()
         }
 
         success {
-            echo """
-DEPLOYMENT SUCCESSFUL
-
-URL: http://${EC2_HOST}
-Deployment Path: ${DEPLOY_PATH}
-Time: ${new Date()}
-"""
+            echo "Deployment successful. URL: http://${EC2_HOST}"
         }
 
         failure {
-            echo """
-DEPLOYMENT FAILED
-
-Check Jenkins console output for errors.
-Possible causes:
-- SSH credential issue
-- Nginx not running
-- Permission problems
-- Network or security group issues
-"""
+            echo "Deployment failed. Check logs."
         }
     }
 }
