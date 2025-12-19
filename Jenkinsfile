@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         EC2_USER = "ubuntu"  // Ubuntu EC2 default user
-        EC2_HOST = "13.xxx.xxx.xxx"  // Replace with your Web Server public IP
+        EC2_HOST = "3.110.214.168"  // Replace with your Web Server public IP
         DEPLOY_PATH = "/var/www/html"
-        GIT_REPO = "https://github.com/Ayush-Singh986/pokemon-anime-store.git"
+        GIT_REPO = "https://github.com/Ayush-Singh986/Pokemon-Project.git"
     }
 
     triggers {
@@ -19,9 +19,9 @@ pipeline {
             steps {
                 echo "🔄 Checking out code from GitHub..."
                 git branch: 'main',
-                    url: "${GIT_REPO}"
+                    url: "$environment.GIT_REPO"
                 
-                echo "📋 Current commit information:"
+                echo " Current commit information:"
                 sh '''
                 echo "Commit ID: $(git rev-parse HEAD)"
                 echo "Commit Message: $(git log -1 --pretty=%B)"
