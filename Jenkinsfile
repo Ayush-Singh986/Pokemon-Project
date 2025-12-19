@@ -40,13 +40,13 @@ pipeline {
                         usernameVariable: 'SSH_USER'
                     )
                 ]) {
-                    sh '''
-                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
-                        $SSH_USER@${EC2_HOST} "
+                    sh """
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \
+                        \$SSH_USER@${env.EC2_HOST} "
                             systemctl is-active nginx
-                            ls -la ${DEPLOY_PATH}
+                            ls -la ${env.DEPLOY_PATH}
                         "
-                    '''
+                    """
                 }
             }
         }
@@ -60,21 +60,21 @@ pipeline {
                         usernameVariable: 'SSH_USER'
                     )
                 ]) {
-                    sh '''
+                    sh """
                         rsync -avz --delete \
                           --exclude Jenkinsfile \
                           --exclude .git \
                           --exclude README.md \
-                          -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
-                          ./ $SSH_USER@${EC2_HOST}:${DEPLOY_PATH}/
+                          -e "ssh -i \$SSH_KEY -o StrictHostKeyChecking=no" \
+                          ./ \$SSH_USER@${env.EC2_HOST}:${env.DEPLOY_PATH}/
 
-                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
-                        $SSH_USER@${EC2_HOST} "
-                            sudo chown -R ubuntu:ubuntu ${DEPLOY_PATH}
-                            sudo chmod -R 755 ${DEPLOY_PATH}
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \
+                        \$SSH_USER@${env.EC2_HOST} "
+                            sudo chown -R ${env.EC2_USER}:${env.EC2_USER} ${env.DEPLOY_PATH}
+                            sudo chmod -R 755 ${env.DEPLOY_PATH}
                             sudo systemctl reload nginx
                         "
-                    '''
+                    """
                 }
             }
         }
@@ -88,14 +88,14 @@ pipeline {
                         usernameVariable: 'SSH_USER'
                     )
                 ]) {
-                    sh '''
-                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
-                        $SSH_USER@${EC2_HOST} "
-                            test -f ${DEPLOY_PATH}/index.html
-                            test -f ${DEPLOY_PATH}/anime.html
+                    sh """
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \
+                        \$SSH_USER@${env.EC2_HOST} "
+                            test -f ${env.DEPLOY_PATH}/index.html
+                            test -f ${env.DEPLOY_PATH}/anime.html
                             curl -s -o /dev/null -w 'HTTP %{http_code}\n' http://localhost
                         "
-                    '''
+                    """
                 }
             }
         }
@@ -107,7 +107,7 @@ pipeline {
         }
 
         success {
-            echo "Deployment successful. URL: http://${EC2_HOST}"
+            echo "Deployment successful. URL: http://${env.EC2_HOST}"
         }
 
         failure {
