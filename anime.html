@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Famous Anime Characters</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            width: 280px;
+            margin: 15px;
+            border-radius: 14px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            padding: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        .card img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .buy-btn {
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .buy-btn:hover {
+            background-color: #e84118;
+        }
+
+        .back {
+            text-align: center;
+            margin: 30px;
+        }
+
+        .back a {
+            text-decoration: none;
+            font-weight: bold;
+            color: #2a5298;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🔥 Famous Anime Characters 🔥</h1>
+    <p>Anime Collectibles Store</p>
+</header>
+
+<div class="container">
+
+    <!-- Naruto -->
+    <div class="card">
+        <img src="https://i.pinimg.com/736x/32/62/85/326285f137bc5f9f5b0744dd173cc8fc.jpg" alt="Naruto">
+        <h3>Naruto Uzumaki</h3>
+        <p>Hidden Leaf Ninja</p>
+        <button class="buy-btn">Buy Now</button>
+    </div>
+
+    <!-- Goku -->
+    <div class="card">
+        <img src="https://i.pinimg.com/736x/c2/46/a8/c246a819967c3bbeb3e99e79b2ffd125.jpg" alt="Goku">
+        <h3>Goku</h3>
+        <p>Dragon Ball Z</p>
+        <button class="buy-btn">Buy Now</button>
+    </div>
+
+    <!-- Luffy -->
+    <div class="card">
+        <img src="https://i.pinimg.com/736x/9d/cc/b2/9dccb221c4b39fa58a9032597397594d.jpg" alt="Luffy">
+        <h3>Monkey D. Luffy</h3>
+        <p>One Piece</p>
+        <button class="buy-btn">Buy Now</button>
+    </div>
+
+    <!-- Ichigo -->
+    <div class="card">
+        <img src="https://i.pinimg.com/1200x/cf/f6/6b/cff66bcd5361c982066aa65d6d345526.jpg" alt="Ichigo">
+        <h3>Ichigo Kurosaki</h3>
+        <p>Bleach</p>
+        <button class="buy-btn">Buy Now</button>
+    </div>
+
+</div>
+
+<div class="back">
+    <a href="index.html">⬅ Back to Home</a>
+</div>
+
+</body>
+</html>
