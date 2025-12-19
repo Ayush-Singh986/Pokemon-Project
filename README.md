@@ -2,18 +2,19 @@
 
 ## Introduction
 
-This project demonstrates a complete CI/CD pipeline for deploying a static web application (Pokemon & Anime Store) to AWS EC2 using Jenkins. The project showcases automated deployment practices, infrastructure management, and continuous delivery workflows.
+This project demonstrates a complete CI/CD pipeline for deploying a static web application (Pokemon & Anime Store) running entirely on AWS EC2 Ubuntu servers. The project showcases automated deployment practices, infrastructure management, and continuous delivery workflows using Jenkins hosted on Ubuntu EC2.
 
 ## Project Overview
 
 The project includes:
 * A responsive Pokemon merchandise store (index.html)
 * An anime characters collectibles page (anime.html)
+* Jenkins CI/CD server running on AWS EC2 Ubuntu
+* Web application hosted on AWS EC2 Ubuntu with Nginx
 * Automated CI/CD pipeline using Jenkins with GitHub webhooks
 * Automatic deployment triggered by GitHub commits
-* Deployment to AWS EC2 instances
-* Infrastructure automation with rsync
-* Complete GitOps workflow
+* Infrastructure automation with rsync between Ubuntu servers
+* Complete GitOps workflow on AWS cloud infrastructure
 
 ---
 
@@ -37,12 +38,13 @@ The project includes:
 
 Before starting, ensure you have:
 
-* **AWS Account** with EC2 access
-* **Jenkins Server** (installed and running)
-* **Git** installed locally
+* **AWS Account** with EC2 access and permissions
+* **Two Ubuntu EC2 instances** (one for Jenkins, one for web server)
 * **SSH Key Pair** for EC2 access
+* **Security Groups** configured for HTTP, HTTPS, and SSH access
+* **Git** installed locally for development
 * **Web Browser** for testing
-* Basic knowledge of HTML, Jenkins, and AWS
+* Basic knowledge of HTML, Jenkins, Ubuntu, and AWS
 
 ---
 
@@ -109,55 +111,66 @@ You should see:
 
 ---
 
-## AWS EC2 Setup
+## AWS EC2 Ubuntu Setup
 
-### 1. Launch an EC2 Instance
+### 1. Launch Ubuntu EC2 Instances
+
+You'll need **two Ubuntu EC2 instances**:
+1. **Jenkins Server** - For CI/CD pipeline
+2. **Web Server** - For hosting the application
+
+#### Launch Jenkins Server Instance
 
 1. **Log in to AWS Console**
 2. **Navigate to EC2 Dashboard**
 3. **Click "Launch Instance"**
 
-4. **Configure Instance:**
-   * **Name:** `pokemon-store-server`
-   * **AMI:** Amazon Linux 2 or Ubuntu 20.04
-   * **Instance Type:** t2.micro (free tier eligible)
+4. **Configure Jenkins Server:**
+   * **Name:** `jenkins-server-ubuntu`
+   * **AMI:** Ubuntu Server 22.04 LTS (Free tier eligible)
+   * **Instance Type:** t2.small (recommended for Jenkins) or t2.micro
    * **Key Pair:** Create or select existing key pair
-   * **Security Group:** Allow HTTP (80), HTTPS (443), and SSH (22)
+   * **Security Group:** Allow SSH (22), HTTP (8080 for Jenkins)
 
-5. **Launch the Instance**
+#### Launch Web Server Instance
 
-### 2. Install Web Server on EC2
+5. **Launch second instance for web server:**
+   * **Name:** `pokemon-store-web-server`
+   * **AMI:** Ubuntu Server 22.04 LTS (Free tier eligible)
+   * **Instance Type:** t2.micro (free tier eligible)
+   * **Key Pair:** Same key pair as Jenkins server
+   * **Security Group:** Allow SSH (22), HTTP (80), HTTPS (443)
 
-Connect to your EC2 instance:
+#### Configure Security Groups
 
-```bash
-ssh -i your-key.pem ec2-user@your-ec2-public-ip
+**Jenkins Server Security Group:**
+```
+Port 22 (SSH) - Your IP address
+Port 8080 (Jenkins) - 0.0.0.0/0 (or your IP for security)
+Port 8080 (Jenkins) - GitHub webhook IPs (for automatic triggers)
 ```
 
-#### For Amazon Linux 2:
-
-```bash
-# Update system packages
-sudo yum update -y
-
-# Install Apache web server
-sudo yum install httpd -y
-
-# Start Apache service
-sudo systemctl start httpd
-
-# Enable Apache to start on boot
-sudo systemctl enable httpd
-
-# Verify Apache is running
-sudo systemctl status httpd
+**Web Server Security Group:**
+```
+Port 22 (SSH) - Jenkins server IP (for deployment)
+Port 80 (HTTP) - 0.0.0.0/0 (public access)
+Port 443 (HTTPS) - 0.0.0.0/0 (public access)
 ```
 
-#### For Ubuntu:
+### 2. Setup Web Server (Ubuntu EC2)
+
+Connect to your **Web Server** Ubuntu instance:
+
+```bash
+ssh -i your-key.pem ubuntu@your-web-server-public-ip
+```
+
+#### Install and Configure Nginx
 
 ```bash
 # Update system packages
 sudo apt update -y
+sudo apt upgrade -y
 
 # Install Nginx web server
 sudo apt install nginx -y
@@ -170,83 +183,115 @@ sudo systemctl enable nginx
 
 # Verify Nginx is running
 sudo systemctl status nginx
+
+# Check if Nginx is serving content
+curl http://localhost
 ```
 
-### 3. Configure Web Server Directory
+#### Configure Nginx for Application
 
 ```bash
 # Set proper permissions for deployment directory
 sudo chmod 755 /var/www/html
 
-# Change ownership (optional, for easier deployment)
-sudo chown -R ec2-user:ec2-user /var/www/html
+# Change ownership for easier deployment
+sudo chown -R ubuntu:ubuntu /var/www/html
+
+# Remove default Nginx page
+sudo rm /var/www/html/index.nginx-debian.html
+
+# Create a simple test page
+echo "<h1>Pokemon Store Server Ready!</h1>" | sudo tee /var/www/html/index.html
 ```
 
-### 4. Test Web Server
+### 3. Setup Jenkins Server (Ubuntu EC2)
 
+Connect to your **Jenkins Server** Ubuntu instance:
+
+```bash
+ssh -i your-key.pem ubuntu@your-jenkins-server-public-ip
+```
+
+#### Install Java (Required for Jenkins)
+
+```bash
+# Update system packages
+sudo apt update -y
+
+# Install OpenJDK 11 (required for Jenkins)
+sudo apt install openjdk-11-jdk -y
+
+# Verify Java installation
+java -version
+```
+
+#### Install Jenkins on Ubuntu
+
+```bash
+# Add Jenkins repository key
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+
+# Add Jenkins repository
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+# Update package list
+sudo apt update -y
+
+# Install Jenkins
+sudo apt install jenkins -y
+
+# Start Jenkins service
+sudo systemctl start jenkins
+
+# Enable Jenkins to start on boot
+sudo systemctl enable jenkins
+
+# Check Jenkins status
+sudo systemctl status jenkins
+
+# Get initial admin password
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+### 4. Test Both Servers
+
+#### Test Web Server
 Open your browser and navigate to:
 ```
-http://your-ec2-public-ip
+http://your-web-server-public-ip
 ```
+You should see "Pokemon Store Server Ready!" message.
 
-You should see the default Apache or Nginx welcome page.
+#### Test Jenkins Server
+Open your browser and navigate to:
+```
+http://your-jenkins-server-public-ip:8080
+```
+You should see Jenkins setup wizard.
 
 ---
 
 ## Jenkins Configuration
 
-### 1. Install Jenkins
+### 1. Complete Jenkins Initial Setup
 
-#### On Ubuntu:
-
-```bash
-# Add Jenkins repository
-wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
-sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
-
-# Install Jenkins
-sudo apt update
-sudo apt install jenkins -y
-
-# Start Jenkins
-sudo systemctl start jenkins
-sudo systemctl enable jenkins
-
-# Get initial admin password
-sudo cat /var/lib/jenkins/secrets/initialAdminPassword
-```
-
-#### On Amazon Linux 2:
-
-```bash
-# Add Jenkins repository
-sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
-sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
-
-# Install Java (required for Jenkins)
-sudo yum install java-11-openjdk -y
-
-# Install Jenkins
-sudo yum install jenkins -y
-
-# Start Jenkins
-sudo systemctl start jenkins
-sudo systemctl enable jenkins
-
-# Get initial admin password
-sudo cat /var/lib/jenkins/secrets/initialAdminPassword
-```
-
-### 2. Access Jenkins Web Interface
+#### Access Jenkins Web Interface
 
 Navigate to:
 ```
-http://your-jenkins-server-ip:8080
+http://your-jenkins-server-public-ip:8080
 ```
 
-Complete the initial setup wizard.
+1. **Enter the initial admin password** (from previous step)
+2. **Install suggested plugins** (recommended)
+3. **Create first admin user**
+4. **Configure Jenkins URL** (use your Jenkins server public IP)
+5. **Start using Jenkins**
 
-### 3. Install Required Jenkins Plugins
+### 2. Install Required Jenkins Plugins
 
 Go to **Manage Jenkins** → **Manage Plugins** → **Available**
 
@@ -257,25 +302,26 @@ Install these plugins:
 * **GitHub Integration Plugin** (for webhook support)
 * **Generic Webhook Trigger Plugin** (for automatic builds)
 
-### 4. Configure Jenkins Agent (Optional)
+### 3. Configure Jenkins to Use Built-in Agent
 
-If using a separate Linux agent:
+Since everything runs on Ubuntu EC2, we'll use Jenkins built-in agent:
 
 1. Go to **Manage Jenkins** → **Manage Nodes and Clouds**
-2. Click **New Node**
-3. Name: `linux-agent`
-4. Type: **Permanent Agent**
-5. Configure SSH connection details
+2. Click on **Built-In Node**
+3. **Configure** → Set **Number of executors** to 2
+4. **Labels:** `linux-agent ubuntu-agent`
+5. **Save**
 
-### 5. Add EC2 SSH Credentials to Jenkins
+### 4. Add EC2 SSH Credentials to Jenkins
 
 1. Go to **Manage Jenkins** → **Manage Credentials**
 2. Click **(global)** → **Add Credentials**
 3. **Kind:** SSH Username with private key
 4. **ID:** `ec2-ssh`
-5. **Username:** `ec2-user` (or `ubuntu` for Ubuntu)
-6. **Private Key:** Paste your EC2 private key content
-7. Click **OK**
+5. **Username:** `ubuntu` (for Ubuntu EC2 instances)
+6. **Private Key:** Paste your EC2 private key content (same key used for both servers)
+7. **Description:** `Ubuntu EC2 SSH Key for deployment`
+8. Click **OK**
 
 ---
 
@@ -300,29 +346,32 @@ If using a separate Linux agent:
 
 ### 2. Make Jenkins Accessible to GitHub
 
-#### Option A: Public Jenkins Server
+#### Configure Ubuntu Firewall for Jenkins
 
-If Jenkins is on a public server:
+On your Jenkins Ubuntu server:
 ```bash
-# Ensure Jenkins is accessible on port 8080
-sudo ufw allow 8080  # Ubuntu
-sudo firewall-cmd --permanent --add-port=8080/tcp  # CentOS/RHEL
+# Enable UFW firewall
+sudo ufw enable
+
+# Allow SSH access
+sudo ufw allow ssh
+
+# Allow Jenkins port
+sudo ufw allow 8080
+
+# Check firewall status
+sudo ufw status
 ```
 
-#### Option B: Use ngrok for Local Jenkins (Development)
+#### Verify Jenkins Accessibility
 
-If Jenkins is running locally:
+Test that Jenkins is accessible from internet:
 ```bash
-# Install ngrok
-wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
-unzip ngrok-stable-linux-amd64.zip
-sudo mv ngrok /usr/local/bin/
+# From your local machine or another server
+curl -I http://your-jenkins-server-public-ip:8080
 
-# Expose Jenkins to internet
-ngrok http 8080
+# Should return HTTP 200 or redirect to login page
 ```
-
-Copy the `https://xxxxx.ngrok.io` URL for webhook configuration.
 
 ### 3. Configure GitHub Repository Webhook
 
@@ -375,15 +424,18 @@ This configuration allows Jenkins to automatically trigger builds when GitHub se
 
 ### 3. Update Jenkinsfile
 
-Before running, update the `Jenkinsfile` with your EC2 details:
+Before running, update the `Jenkinsfile` with your Web Server details:
 
 ```groovy
 environment {
-    EC2_USER = "ec2-user"              # Change to "ubuntu" if using Ubuntu
-    EC2_HOST = "your-ec2-public-ip"    # Replace with your actual EC2 IP
-    DEPLOY_PATH = "/var/www/html"
+    EC2_USER = "ubuntu"                    # Ubuntu EC2 default user
+    EC2_HOST = "your-web-server-public-ip" # Replace with your Web Server public IP
+    DEPLOY_PATH = "/var/www/html"          # Nginx default document root
+    GIT_REPO = "https://github.com/Ayush-Singh986/pokemon-anime-store.git"
 }
 ```
+
+**Important:** Use your **Web Server** public IP, not the Jenkins server IP!
 
 ### 4. Run the Pipeline
 
@@ -555,42 +607,43 @@ You should see the Pokemon Store homepage.
 
 ## Troubleshooting
 
-### Issue: Jenkins Cannot Connect to EC2
+### Issue: Jenkins Cannot Connect to Web Server
 
 **Solution:**
 ```bash
-# Verify SSH key permissions
+# Verify SSH key permissions on Jenkins server
 chmod 400 your-key.pem
 
-# Test SSH connection manually
-ssh -i your-key.pem ec2-user@your-ec2-ip
+# Test SSH connection manually from Jenkins server
+ssh -i your-key.pem ubuntu@your-web-server-ip
 
-# Check EC2 security group allows SSH from Jenkins server IP
+# Check Web Server security group allows SSH from Jenkins server IP
+# Ensure Jenkins server IP is allowed in Web Server security group on port 22
 ```
 
 ### Issue: Files Not Deploying
 
 **Solution:**
 ```bash
-# Check deployment directory permissions on EC2
-ls -la /var/www/html
+# Check deployment directory permissions on Web Server
+ssh -i your-key.pem ubuntu@your-web-server-ip "ls -la /var/www/html"
 
-# Ensure web server is running
-sudo systemctl status httpd  # or nginx
+# Ensure Nginx is running on Web Server
+ssh -i your-key.pem ubuntu@your-web-server-ip "sudo systemctl status nginx"
 
-# Check Jenkins console output for errors
+# Check Jenkins console output for rsync errors
 ```
 
 ### Issue: Website Shows 403 Forbidden
 
 **Solution:**
 ```bash
-# Fix file permissions on EC2
-sudo chmod -R 755 /var/www/html
-sudo chown -R ec2-user:ec2-user /var/www/html
-
-# Restart web server
-sudo systemctl restart httpd  # or nginx
+# Fix file permissions on Ubuntu Web Server
+ssh -i your-key.pem ubuntu@your-web-server-ip "
+    sudo chmod -R 755 /var/www/html
+    sudo chown -R ubuntu:ubuntu /var/www/html
+    sudo systemctl restart nginx
+"
 ```
 
 ### Issue: Images Not Loading
@@ -717,6 +770,65 @@ command here
 [Link text](URL)
 ![Image alt text](image-url)
 ```
+
+---
+
+## Ubuntu EC2 Architecture Overview
+
+### Infrastructure Layout
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        AWS Cloud                            │
+│                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────────────┐ │
+│  │   Jenkins Server    │    │      Web Server            │ │
+│  │   Ubuntu 22.04 LTS  │    │    Ubuntu 22.04 LTS        │ │
+│  │                     │    │                             │ │
+│  │  ┌─────────────────┐│    │ ┌─────────────────────────┐ │ │
+│  │  │    Jenkins      ││    │ │        Nginx            │ │ │
+│  │  │   Port: 8080    ││    │ │      Port: 80           │ │ │
+│  │  │                 ││    │ │                         │ │ │
+│  │  │  CI/CD Pipeline ││────┼─┤ /var/www/html           │ │ │
+│  │  │                 ││    │ │                         │ │ │
+│  │  └─────────────────┘│    │ │  Pokemon & Anime Store  │ │ │
+│  │                     │    │ └─────────────────────────┘ │ │
+│  └─────────────────────┘    └─────────────────────────────┘ │
+│           │                                  │               │
+│           │                                  │               │
+└───────────┼──────────────────────────────────┼───────────────┘
+            │                                  │
+            │                                  │
+    ┌───────▼──────────┐              ┌───────▼──────────┐
+    │  GitHub Webhook  │              │   Public Access  │
+    │   (Port 8080)    │              │    (Port 80)     │
+    └──────────────────┘              └──────────────────┘
+```
+
+### Security Groups Configuration
+
+**Jenkins Server Security Group:**
+- **Inbound Rules:**
+  - SSH (22): Your IP address
+  - Custom TCP (8080): 0.0.0.0/0 (for GitHub webhooks)
+- **Outbound Rules:**
+  - All traffic: 0.0.0.0/0
+
+**Web Server Security Group:**
+- **Inbound Rules:**
+  - SSH (22): Jenkins Server Private IP
+  - HTTP (80): 0.0.0.0/0
+  - HTTPS (443): 0.0.0.0/0 (optional)
+- **Outbound Rules:**
+  - All traffic: 0.0.0.0/0
+
+### Data Flow
+
+1. **Developer** pushes code to **GitHub**
+2. **GitHub webhook** triggers **Jenkins** (Ubuntu EC2)
+3. **Jenkins** pulls code and executes pipeline
+4. **Jenkins** deploys via SSH/rsync to **Web Server** (Ubuntu EC2)
+5. **Nginx** serves the updated application to users
 
 ---
 

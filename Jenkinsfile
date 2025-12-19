@@ -2,8 +2,8 @@ pipeline {
     agent { label 'linux-agent' }
 
     environment {
-        EC2_USER = "ec2-user"
-        EC2_HOST = "13.xxx.xxx.xxx" 
+        EC2_USER = "ubuntu"  // Ubuntu EC2 default user
+        EC2_HOST = "13.xxx.xxx.xxx"  // Replace with your Web Server public IP
         DEPLOY_PATH = "/var/www/html"
         GIT_REPO = "https://github.com/Ayush-Singh986/pokemon-anime-store.git"
     }
@@ -65,8 +65,8 @@ pipeline {
                     echo "🔗 Testing SSH connection to EC2..."
                     ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "echo 'SSH connection successful'"
                     
-                    echo "🌐 Checking web server status..."
-                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "sudo systemctl is-active httpd || sudo systemctl is-active nginx"
+                    echo "🌐 Checking Nginx web server status..."
+                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "sudo systemctl is-active nginx"
                     
                     echo "📂 Checking deployment directory..."
                     ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "ls -la ${DEPLOY_PATH}"
@@ -88,10 +88,11 @@ pipeline {
                       --progress \
                       ./ ${EC2_USER}@${EC2_HOST}:${DEPLOY_PATH}/
                     
-                    echo "🔧 Setting proper file permissions..."
+                    echo "🔧 Setting proper file permissions for Ubuntu/Nginx..."
                     ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
                         sudo chmod -R 755 ${DEPLOY_PATH}
-                        sudo chown -R ${EC2_USER}:${EC2_USER} ${DEPLOY_PATH}
+                        sudo chown -R ubuntu:ubuntu ${DEPLOY_PATH}
+                        sudo systemctl reload nginx
                         ls -la ${DEPLOY_PATH}
                     "
                     '''
