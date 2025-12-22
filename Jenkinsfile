@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'linux-agent' }
+    agent { label 'linux-agent'}
 
     environment {
         EC2_USER    = "ubuntu"   
