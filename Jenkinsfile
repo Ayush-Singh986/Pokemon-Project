@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         EC2_USER    = "ubuntu"   
-        EC2_HOST    = "3.110.214.168"
+        EC2_HOST    = "35.154.219.247"
         DEPLOY_PATH = "/var/www/html"
         GIT_REPO    = "https://github.com/Ayush-Singh986/Pokemon-Project.git"
     }
