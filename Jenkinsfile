@@ -2,7 +2,7 @@ pipeline {
     agent { label 'linux-agent' }
 
     environment {
-        EC2_USER    = "ubuntu"
+        EC2_USER    = "ubuntu"   
         EC2_HOST    = "3.110.214.168"
         DEPLOY_PATH = "/var/www/html"
         GIT_REPO    = "https://github.com/Ayush-Singh986/Pokemon-Project.git"
